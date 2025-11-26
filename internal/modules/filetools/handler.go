@@ -3,6 +3,7 @@ package filetools
 import (
 	"bytes"
 	"io"
+	"log"
 	"net/http"
 
 	services "github.com/GuiFernandess7/risa/internal/services"
@@ -10,6 +11,7 @@ import (
 )
 
 func (imgH ImageHandler) UploadImage(c echo.Context) error {
+	log.Println("[STARTING] - Calling route /image/upload...")
 	file, err := c.FormFile("file")
 	if err != nil {
 		return c.String(http.StatusBadRequest, "Error retrieving file from form")
@@ -21,12 +23,14 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 	}
 	defer src.Close()
 
+	log.Println("[STARTING] - Reading file...")
 	buf := &bytes.Buffer{}
 	_, err = io.Copy(buf, src)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "Error reading file")
 	}
 
+	log.Println("[STARTING] - Reading file...")
 	engineName := c.FormValue("engine")
 	searchService, asyncService, err := services.GetEngine(engineName)
 	if err != nil {
@@ -35,6 +39,7 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 		})
 	}
 
+	log.Println("[STARTING] - Starting engine...")
 	if asyncService != nil {
 		jobID, err := asyncService.Start(services.SearchInput{
 			ImageBytes: buf.Bytes(),
