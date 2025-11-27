@@ -25,6 +25,9 @@ func GetEngine(name string) (SearchService, AsyncSearchService, error) {
 
 	case "facecrawler":
 		return nil, NewFaceCrawler(), nil
+
+	case "yandex":
+		return NewYandexSearch(), nil, nil
 	}
 
 	return nil, nil, fmt.Errorf("invalid engine")

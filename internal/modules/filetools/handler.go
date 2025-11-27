@@ -34,7 +34,7 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 	engineName := c.FormValue("engine")
 	searchService, asyncService, err := services.GetEngine(engineName)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+		return c.JSON(http.StatusBadRequest, map[string]any{
 			"message": err.Error(),
 		})
 	}
@@ -77,27 +77,27 @@ func (imgH ImageHandler) CheckStatusAsync(c echo.Context) error {
 	jobID := c.QueryParam("job_id")
 
 	if engineName == "" || jobID == "" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+		return c.JSON(http.StatusBadRequest, map[string]any{
 			"message": "engine and job_id are required",
 		})
 	}
 
 	_, asyncService, err := services.GetEngine(engineName)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+		return c.JSON(http.StatusBadRequest, map[string]any{
 			"message": "invalid engine",
 		})
 	}
 
 	if asyncService == nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+		return c.JSON(http.StatusBadRequest, map[string]any{
 			"message": "this engine does not support async status",
 		})
 	}
 
 	result, err := asyncService.Check(jobID)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+		return c.JSON(http.StatusInternalServerError, map[string]any{
 			"message": err.Error(),
 		})
 	}

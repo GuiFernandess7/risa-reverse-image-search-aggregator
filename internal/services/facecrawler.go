@@ -10,19 +10,21 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/GuiFernandess7/risa/pkg/utils"
 )
 
 type BaseFaceCrawlerResponse struct {
-	IDSearch        string      `json:"id_search"`
-	Message         string      `json:"message"`
-	Progress        interface{} `json:"progress"`
-	Error           interface{} `json:"error"`
-	Code            interface{} `json:"code"`
-	Output          Output 		`json:"output"`
+	IDSearch string      `json:"id_search"`
+	Message  string      `json:"message"`
+	Progress interface{} `json:"progress"`
+	Error    interface{} `json:"error"`
+	Code     interface{} `json:"code"`
+	Output   Output      `json:"output"`
 }
 
 type Output struct {
-	Items          []Item `json:"items"`
+	Items []Item `json:"items"`
 }
 
 type FaceCrawlerStartResult struct {
@@ -69,13 +71,12 @@ func (fc FaceCrawler) Start(input SearchInput) (any, error) {
 
 	uploadURL := site + "api/upload_pic"
 	respBytes, status, err := fc.sendImageBytes(uploadURL, headers, input.ImageBytes)
-
-	if err != nil {
+	if _, failed, err := utils.Try(respBytes, err); failed {
 		return nil, err
 	}
 
 	if status != 200 {
-		return nil, fmt.Errorf("error calling service: %v", status)
+		return nil, fmt.Errorf("service returned %d", status)
 	}
 
 	var parsed BaseFaceCrawlerResponse
@@ -109,7 +110,7 @@ func (fc FaceCrawler) Check(jobID string) (any, error) {
 	log.Printf("[CHECK] Sending: %s", string(b))
 
 	req, err := http.NewRequest("POST", site+"api/search", bytes.NewBuffer(b))
-	if err != nil {
+	if _, failed, err := utils.Try(req, err); failed {
 		return nil, err
 	}
 
@@ -118,7 +119,7 @@ func (fc FaceCrawler) Check(jobID string) (any, error) {
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := fc.Client.Do(req)
-	if err != nil {
+	if _, failed, err := utils.Try(resp, err); failed {
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -139,42 +140,38 @@ func (fc FaceCrawler) Check(jobID string) (any, error) {
 }
 
 func (fc FaceCrawler) sendImageBytes(url string, headers map[string]string, image []byte) ([]byte, int, error) {
-
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-
-	// ✔ exatamente igual ao Python:
-	// files = { "id_search": None }
 	writer.WriteField("id_search", "")
-
 	filePart, err := writer.CreateFormFile("images", "upload.jpg")
-	if err != nil {
-		return nil, 0, err
-	}
 
+	if _, failed, err := utils.Try(filePart, err); failed {
+		return nil, http.StatusInternalServerError, err
+	}
 	if _, err := filePart.Write(image); err != nil {
-		return nil, 0, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	writer.Close()
-
 	req, err := http.NewRequest("POST", url, body)
-	if err != nil {
-		return nil, 0, err
-	}
 
+	if err != nil {
+		return nil, http.StatusInternalServerError, err
+	}
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	req.Header.Set("Content-Type", writer.FormDataContentType())
 
+	req.Header.Set("Content-Type", writer.FormDataContentType())
 	resp, err := fc.Client.Do(req)
+
 	if err != nil {
-		return nil, 0, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	defer resp.Body.Close()
 	respBytes, err := io.ReadAll(resp.Body)
+
 	if err != nil {
 		return nil, 0, err
 	}
