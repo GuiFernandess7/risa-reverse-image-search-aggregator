@@ -30,7 +30,6 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Error reading file")
 	}
 
-	log.Println("[STARTING] - Reading file...")
 	engineName := c.FormValue("engine")
 	searchService, asyncService, err := services.GetEngine(engineName)
 	if err != nil {

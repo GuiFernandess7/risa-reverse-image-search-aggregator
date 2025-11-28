@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/GuiFernandess7/risa/pkg/utils"
+	utils "github.com/GuiFernandess7/risa/pkg/utils"
 )
 
 type BaseFaceCrawlerResponse struct {
@@ -57,37 +55,39 @@ func NewFaceCrawler() *FaceCrawler {
 }
 
 func (fc FaceCrawler) Start(input SearchInput) (any, error) {
-
+	// Uploads the image to run search
 	if len(input.ImageBytes) == 0 {
 		return nil, fmt.Errorf("FaceCrawler requires bytes")
 	}
 
 	site := os.Getenv("SITE_URL")
-	apiKey := os.Getenv("FACECRAWLER_KEY")
-	headers := map[string]string{
-		"Authorization": apiKey,
-		"Accept":        "application/json",
-	}
-
 	uploadURL := site + "api/upload_pic"
-	respBytes, status, err := fc.sendImageBytes(uploadURL, headers, input.ImageBytes)
-	if _, failed, err := utils.Try(respBytes, err); failed {
+
+	log.Println("[STARTING] - Running facecrawler search...")
+	writer, body, err := utils.GetFileRequestWriter("id_search", "", input.ImageBytes)
+	if err != nil {
 		return nil, err
 	}
 
-	if status != 200 {
-		return nil, fmt.Errorf("service returned %d", status)
+	writer.Close()
+	respBytes, statusCode, err := utils.SendRequest(uploadURL, body, os.Getenv("FACECRAWLER_KEY"), writer, true)
+	if _, failed, err := utils.Try(respBytes, err); failed && statusCode != http.StatusOK {
+		log.Printf("[ERROR] - Error calling facecrawler service: %v", err)
+		return nil, fmt.Errorf("unexpected error occured.")
 	}
 
 	var parsed BaseFaceCrawlerResponse
 	if err := json.Unmarshal(respBytes, &parsed); err != nil {
+		log.Printf("[ERROR] - Error parsing service response: %v", err)
 		return nil, fmt.Errorf("invalid JSON: %w", err)
 	}
 
 	if parsed.Error != nil {
-		return nil, fmt.Errorf("%v (%v)", parsed.Error, parsed.Code)
+		log.Printf("[ERROR] - Error calling facecrawler service: %v", err)
+		return nil, fmt.Errorf("service error: %v (%v)", parsed.Error, parsed.Code)
 	}
 
+	log.Printf("[SUCCESS] - Facecrawler search ended.")
 	return FaceCrawlerStartResult{
 		IDSearch: parsed.IDSearch,
 		Message:  parsed.Message,
@@ -95,7 +95,7 @@ func (fc FaceCrawler) Start(input SearchInput) (any, error) {
 }
 
 func (fc FaceCrawler) Check(jobID string) (any, error) {
-
+	// Checks the search status
 	site := os.Getenv("SITE_URL")
 	apiKey := os.Getenv("FACECRAWLER_KEY")
 
@@ -107,74 +107,19 @@ func (fc FaceCrawler) Check(jobID string) (any, error) {
 	}
 
 	b, _ := json.Marshal(jsonPayload)
-	log.Printf("[CHECK] Sending: %s", string(b))
+	log.Println("[STARTING] - Running facecrawler search by ID...")
 
-	req, err := http.NewRequest("POST", site+"api/search", bytes.NewBuffer(b))
-	if _, failed, err := utils.Try(req, err); failed {
+	respBytes, statusCode, err := utils.SendRequest(site+"api/search", bytes.NewBuffer(b), apiKey, nil, false)
+	if err != nil && statusCode != http.StatusOK {
 		return nil, err
 	}
-
-	req.Header.Set("Authorization", apiKey)
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := fc.Client.Do(req)
-	if _, failed, err := utils.Try(resp, err); failed {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	respBytes, _ := io.ReadAll(resp.Body)
-	log.Printf("[CHECK] Response: %s", respBytes)
 
 	var parsed BaseFaceCrawlerResponse
 	if err := json.Unmarshal(respBytes, &parsed); err != nil {
 		return nil, err
 	}
-
 	if parsed.Error != nil {
 		return nil, fmt.Errorf("%v (%v)", parsed.Error, parsed.Code)
 	}
-
 	return parsed, nil
-}
-
-func (fc FaceCrawler) sendImageBytes(url string, headers map[string]string, image []byte) ([]byte, int, error) {
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	writer.WriteField("id_search", "")
-	filePart, err := writer.CreateFormFile("images", "upload.jpg")
-
-	if _, failed, err := utils.Try(filePart, err); failed {
-		return nil, http.StatusInternalServerError, err
-	}
-	if _, err := filePart.Write(image); err != nil {
-		return nil, http.StatusInternalServerError, err
-	}
-
-	writer.Close()
-	req, err := http.NewRequest("POST", url, body)
-
-	if err != nil {
-		return nil, http.StatusInternalServerError, err
-	}
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	resp, err := fc.Client.Do(req)
-
-	if err != nil {
-		return nil, http.StatusInternalServerError, err
-	}
-
-	defer resp.Body.Close()
-	respBytes, err := io.ReadAll(resp.Body)
-
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return respBytes, resp.StatusCode, nil
 }
