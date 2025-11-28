@@ -1,4 +1,4 @@
-package services
+package facecrawler
 
 import (
 	"bytes"
@@ -9,34 +9,9 @@ import (
 	"os"
 	"time"
 
-	utils "github.com/GuiFernandess7/risa/pkg/utils"
+	"github.com/GuiFernandess7/risa/internal/services/types"
+	"github.com/GuiFernandess7/risa/pkg/utils"
 )
-
-type BaseFaceCrawlerResponse struct {
-	IDSearch string      `json:"id_search"`
-	Message  string      `json:"message"`
-	Progress interface{} `json:"progress"`
-	Error    interface{} `json:"error"`
-	Code     interface{} `json:"code"`
-	Output   Output      `json:"output"`
-}
-
-type Output struct {
-	Items []Item `json:"items"`
-}
-
-type FaceCrawlerStartResult struct {
-	IDSearch string `json:"id_search"`
-	Message  string `json:"message"`
-}
-
-type Item struct {
-	URL string `json:"url"`
-}
-
-type FaceCrawler struct {
-	Client *http.Client
-}
 
 func (fc FaceCrawler) Name() string {
 	return "facecrawler"
@@ -54,7 +29,7 @@ func NewFaceCrawler() *FaceCrawler {
 	}
 }
 
-func (fc FaceCrawler) Start(input SearchInput) (any, error) {
+func (fc FaceCrawler) Start(input types.SearchInput) (any, error) {
 	// Uploads the image to run search
 	if len(input.ImageBytes) == 0 {
 		return nil, fmt.Errorf("FaceCrawler requires bytes")
@@ -73,7 +48,7 @@ func (fc FaceCrawler) Start(input SearchInput) (any, error) {
 	respBytes, statusCode, err := utils.SendRequest(uploadURL, body, os.Getenv("FACECRAWLER_KEY"), writer, true)
 	if _, failed, err := utils.Try(respBytes, err); failed && statusCode != http.StatusOK {
 		log.Printf("[ERROR] - Error calling facecrawler service: %v", err)
-		return nil, fmt.Errorf("unexpected error occured.")
+		return nil, fmt.Errorf("unexpected error occured")
 	}
 
 	var parsed BaseFaceCrawlerResponse

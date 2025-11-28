@@ -5,6 +5,7 @@ go 1.24.3
 require (
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.13.4
+	github.com/serpapi/google-search-results-golang v0.0.0-20240325113416-ec93f510648e
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
 )

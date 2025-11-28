@@ -6,12 +6,14 @@ import (
 	"log"
 	"net/http"
 
-	services "github.com/GuiFernandess7/risa/internal/services"
+	"github.com/GuiFernandess7/risa/internal/services/search"
 	"github.com/labstack/echo/v4"
 )
 
 func (imgH ImageHandler) UploadImage(c echo.Context) error {
 	log.Println("[STARTING] - Calling route /image/upload...")
+
+	// Convert to utils -----
 	file, err := c.FormFile("file")
 	if err != nil {
 		return c.String(http.StatusBadRequest, "Error retrieving file from form")
@@ -30,17 +32,19 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Error reading file")
 	}
 
+	// Convert to utils -----
+	
 	engineName := c.FormValue("engine")
-	searchService, asyncService, err := services.GetEngine(engineName)
+	searchService, asyncService, err := search.GetEngine(engineName)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{
 			"message": err.Error(),
 		})
 	}
 
-	log.Println("[STARTING] - Starting engine...")
 	if asyncService != nil {
-		jobID, err := asyncService.Start(services.SearchInput{
+		log.Println("[STARTING] - Starting async search service...")
+		jobID, err := asyncService.Start(search.SearchInput{
 			ImageBytes: buf.Bytes(),
 		})
 		if err != nil {
@@ -55,7 +59,8 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 		})
 	}
 
-	result, err := searchService.Search(services.SearchInput{
+	log.Println("[STARTING] - Starting search service...")
+	result, err := searchService.Search(search.SearchInput{
 		ImageBytes: buf.Bytes(),
 	})
 
@@ -81,7 +86,7 @@ func (imgH ImageHandler) CheckStatusAsync(c echo.Context) error {
 		})
 	}
 
-	_, asyncService, err := services.GetEngine(engineName)
+	_, asyncService, err := search.GetEngine(engineName)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{
 			"message": "invalid engine",
