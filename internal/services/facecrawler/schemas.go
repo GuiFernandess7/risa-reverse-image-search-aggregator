@@ -23,7 +23,8 @@ type FaceCrawlerStartResult struct {
 }
 
 type Item struct {
-	URL string `json:"url"`
+	URL   string `json:"url"`
+	Score int    `json:"score"`
 }
 
 type FaceCrawler struct {
