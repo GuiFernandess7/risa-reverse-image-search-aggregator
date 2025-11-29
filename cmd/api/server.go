@@ -10,7 +10,9 @@ import (
 	router "github.com/GuiFernandess7/risa/internal"
 	middlewares "github.com/GuiFernandess7/risa/internal/middlewares"
 	sqlconnect "github.com/GuiFernandess7/risa/internal/repository/database"
+	utils "github.com/GuiFernandess7/risa/pkg/utils"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 )
@@ -30,7 +32,8 @@ func main() {
 	}
 
 	e := echo.New()
-	e = middlewares.ApplyMiddlewares(e)
+	e.Validator = &utils.CustomValidator{Validator: validator.New()}
+	e = middlewares.ApplySecurityMiddlewares(e)
 
 	router.InitRoutes(db, e)
 	srv := &http.Server{

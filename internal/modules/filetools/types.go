@@ -11,7 +11,7 @@ type ImageHandler struct {
 }
 
 type UploadInput struct {
-	Engine string `form:"engine"`
+	Engine string `form:"engine" validate:"required"`
 	File   multipart.File
 	Header *multipart.FileHeader
 }

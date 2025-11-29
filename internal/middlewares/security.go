@@ -5,7 +5,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-func ApplyMiddlewares(e *echo.Echo) *echo.Echo {
+func ApplySecurityMiddlewares(e *echo.Echo) *echo.Echo {
 	e.Use(middleware.Recover())
 	//e.Use(middleware.Logger())
 	e.Use(middleware.Gzip())
