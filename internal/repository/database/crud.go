@@ -42,6 +42,14 @@ func (c *CrudGeneric[T]) ReadAll() ([]T, error) {
 	return items, nil
 }
 
+func (c *CrudGeneric[T]) FindBy(field string, value any) (*T, error) {
+	var model T
+	if err := c.DB.Where(fmt.Sprintf("%s = ?", field), value).First(&model).Error; err != nil {
+		return nil, err
+	}
+	return &model, nil
+}
+
 func (c *CrudGeneric[T]) Update(id any, updated *T) error {
 	return c.DB.Model(new(T)).Where("id = ?", id).Updates(updated).Error
 }

@@ -10,14 +10,15 @@ import (
 )
 
 func InitRoutes(db *gorm.DB, e *echo.Echo) {
-	e.POST("/signup", auth.SignupHandler)
-	e.POST("/login", auth.LoginHandler)
-	e.POST("/refresh", auth.RefreshHandler)
+	authHandlers := &auth.AuthHandler{DB: db}
+	e.POST("/signup", authHandlers.SignupHandler)
+	e.POST("/login", authHandlers.LoginHandler)
+	e.POST("/refresh", authHandlers.RefreshHandler)
 
-	handlers := &filetools.ImageHandler{DB: db}
+	fileHandlers := &filetools.ImageHandler{DB: db}
 	v1 := e.Group("/v1")
 	v1.Use(middlewares.AuthMiddleware())
 
-	v1.POST("/image/upload", handlers.UploadImage)
-	v1.GET("/image/status", handlers.CheckStatusAsync)
+	v1.POST("/image/upload", fileHandlers.UploadImage)
+	v1.GET("/image/status", fileHandlers.CheckStatusAsync)
 }
