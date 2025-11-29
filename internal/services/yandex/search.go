@@ -30,7 +30,7 @@ func (ys YandexSearch) Search(input types.SearchInput) (any, error) {
 	hostImageKey := os.Getenv("HOST_IMAGE_KEY")
 	serpAPIKey := os.Getenv("SERPAPI_KEY")
 
-	writer, body, err := utils.GetFileRequestWriter("key", os.Getenv("HOST_IMAGE_KEY"), input.ImageBytes)
+	writer, body, err := utils.GetFileRequestWriter("key", os.Getenv("HOST_IMAGE_KEY"), input.ImageBytes, "image")
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +48,11 @@ func (ys YandexSearch) Search(input types.SearchInput) (any, error) {
 		return "", fmt.Errorf("invalid JSON: %w", err)
 	}
 
+	if imgBBResponseSchema.Data.URL == "" {
+		log.Printf("[ERROR] - Error getting image URL: %v", imgBBResponseSchema)
+		return "", fmt.Errorf("unexpected error occured")
+	}
+
 	parameter := map[string]string{
 		"engine": "yandex_images",
 		"url":    imgBBResponseSchema.Data.URL,
@@ -60,13 +65,7 @@ func (ys YandexSearch) Search(input types.SearchInput) (any, error) {
 		return nil, fmt.Errorf("unexpected error occured")
 	}
 
-	var yandexResponseSchema YandexSearchResponse
-	if err := json.Unmarshal(respBytes, &yandexResponseSchema); err != nil {
-		log.Printf("[ERROR] - Error parsing service response: %v", err)
-		return nil, fmt.Errorf("invalid JSON: %w", err)
-	}
-
-	log.Printf("[YANDEX] - Response data: %v", yandexResponseSchema)
+	log.Printf("[YANDEX] - Response data: %v", results)
 	imageResults := results["image_results"]
 	log.Printf("[SUCCESS] - Yandex search ended.")
 	return imageResults, nil

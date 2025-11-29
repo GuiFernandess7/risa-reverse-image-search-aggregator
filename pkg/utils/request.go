@@ -9,6 +9,7 @@ func GetFileRequestWriter(
 	fieldName string,
 	fieldValue string,
 	imageObject []byte,
+	formField string,
 ) (*multipart.Writer, *bytes.Buffer, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -17,7 +18,7 @@ func GetFileRequestWriter(
 		return nil, nil, err
 	}
 
-	part, err := writer.CreateFormFile("images", "upload.jpg")
+	part, err := writer.CreateFormFile(formField, "upload.jpg")
 	if err != nil {
 		return nil, nil, err
 	}

@@ -32,6 +32,15 @@ type ImgBBResponse struct {
 	Status  int  `json:"status"`
 }
 
+type YandexSearchErrorResponse struct {
+	StatusCode int `json:"status_code"`
+	Erro       struct {
+		Message string `json:"message"`
+		Code    int    `json:"code"`
+	}
+	StatusText string `json:"status_text"`
+}
+
 type YandexSearchResponse struct {
 	ImageResults []ImageResult `json:"image_results,omitempty"`
 }

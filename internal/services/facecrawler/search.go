@@ -39,7 +39,7 @@ func (fc FaceCrawler) Start(input types.SearchInput) (any, error) {
 	uploadURL := site + "api/upload_pic"
 
 	log.Println("[STARTING] - Running facecrawler search...")
-	writer, body, err := utils.GetFileRequestWriter("id_search", "", input.ImageBytes)
+	writer, body, err := utils.GetFileRequestWriter("id_search", "", input.ImageBytes, "images")
 	if err != nil {
 		return nil, err
 	}
