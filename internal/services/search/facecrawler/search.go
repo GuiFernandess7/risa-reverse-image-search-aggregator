@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/GuiFernandess7/risa/internal/services/types"
+	interfaces "github.com/GuiFernandess7/risa/internal/repository/interfaces"
 	"github.com/GuiFernandess7/risa/pkg/utils"
 )
 
@@ -29,7 +29,7 @@ func NewFaceCrawler() *FaceCrawler {
 	}
 }
 
-func (fc FaceCrawler) Start(input types.SearchInput) (any, error) {
+func (fc FaceCrawler) Start(input interfaces.SearchInput) (any, error) {
 	// Uploads the image to run search
 	if len(input.ImageBytes) == 0 {
 		return nil, fmt.Errorf("FaceCrawler requires bytes")

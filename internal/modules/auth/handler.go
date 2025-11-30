@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -14,26 +15,28 @@ var jwtSecret = []byte("JWT_SECRET_KEY")
 func (ah AuthHandler) LoginHandler(c echo.Context) error {
 	var body LoginRequest
 	if err := c.Bind(&body); err != nil {
-		return c.JSON(400, echo.Map{"error": "invalid body"})
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"error": "invalid body",
+		})
 	}
 
 	if err := c.Validate(&body); err != nil {
-		return c.JSON(400, echo.Map{"error": "invalid fields"})
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid fields"})
 	}
 
 	crud := database.CrudGeneric[User]{DB: ah.DB}
 	user, err := crud.FindBy("email", body.Email)
 	if err != nil {
-		return c.JSON(400, echo.Map{"error": "invalid credentials"})
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid credentials"})
 	}
 
 	if !CheckPasswordHash(body.Password, user.PasswordHash) {
-		return c.JSON(400, echo.Map{"error": "invalid credentials"})
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid credentials"})
 	}
 
 	access, refresh, err := generateTokens(user.ID)
 	if err != nil {
-		return c.JSON(500, echo.Map{"error": "token error"})
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "token error"})
 	}
 
 	return c.JSON(200, echo.Map{
@@ -64,11 +67,11 @@ func (ah AuthHandler) SignupHandler(c echo.Context) error {
 	}
 
 	newUser := User{
-		Email:          body.Email,
-		FirstName:      body.FirstName,
-		LastName:       body.LastName,
+		Email:        body.Email,
+		FirstName:    body.FirstName,
+		LastName:     body.LastName,
 		PasswordHash: hashedPwd,
-		Status:         "active",
+		Status:       "active",
 	}
 
 	if err := crud.Create(&newUser); err != nil {

@@ -6,36 +6,26 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/GuiFernandess7/risa/internal/services/search"
+	interfaces "github.com/GuiFernandess7/risa/internal/repository/interfaces"
+	engine "github.com/GuiFernandess7/risa/internal/services/engine"
+	utils "github.com/GuiFernandess7/risa/pkg/utils"
 	"github.com/labstack/echo/v4"
 )
 
 func (imgH ImageHandler) UploadImage(c echo.Context) error {
 	log.Println("[STARTING] - Calling route /image/upload...")
-
-	// Convert to utils -----
-	file, err := c.FormFile("file")
-	if err != nil {
-		return c.String(http.StatusBadRequest, "Error retrieving file from form")
-	}
-
-	src, err := file.Open()
-	if err != nil {
-		return c.String(http.StatusInternalServerError, "Error opening file")
-	}
-	defer src.Close()
+	srcFile, err := utils.GetFileObject(c, "file")
+	defer srcFile.Close()
 
 	log.Println("[STARTING] - Reading file...")
 	buf := &bytes.Buffer{}
-	_, err = io.Copy(buf, src)
+	_, err = io.Copy(buf, srcFile)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "Error reading file")
 	}
 
-	// Convert to utils -----
-	
 	engineName := c.FormValue("engine")
-	searchService, asyncService, err := search.GetEngine(engineName)
+	searchService, asyncService, err := engine.GetEngine(engineName)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{
 			"message": err.Error(),
@@ -44,7 +34,7 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 
 	if asyncService != nil {
 		log.Println("[STARTING] - Starting async search service...")
-		jobID, err := asyncService.Start(search.SearchInput{
+		jobID, err := asyncService.Start(interfaces.SearchInput{
 			ImageBytes: buf.Bytes(),
 		})
 		if err != nil {
@@ -60,7 +50,7 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 	}
 
 	log.Println("[STARTING] - Starting search service...")
-	result, err := searchService.Search(search.SearchInput{
+	result, err := searchService.Search(interfaces.SearchInput{
 		ImageBytes: buf.Bytes(),
 	})
 
@@ -77,16 +67,16 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 }
 
 func (imgH ImageHandler) CheckStatusAsync(c echo.Context) error {
-	engineName := c.QueryParam("engine")
-	jobID := c.QueryParam("job_id")
-
-	if engineName == "" || jobID == "" {
+	allowedParams := []string{"engine", "job_id"}
+	if err := utils.ValidateRequestParams(c, allowedParams); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{
-			"message": "engine and job_id are required",
+			"message": "invalid parameters",
 		})
 	}
 
-	_, asyncService, err := search.GetEngine(engineName)
+	engineName := c.QueryParam("engine")
+	jobID := c.QueryParam("job_id")
+	_, asyncService, err := engine.GetEngine(engineName)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{
 			"message": "invalid engine",
@@ -106,7 +96,7 @@ func (imgH ImageHandler) CheckStatusAsync(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"engine": engineName,
 		"result": result,
 	})

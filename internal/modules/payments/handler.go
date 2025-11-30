@@ -1,0 +1,109 @@
+package payments
+
+import (
+	"net/http"
+	"strconv"
+
+	database "github.com/GuiFernandess7/risa/internal/repository/database"
+	stripe "github.com/GuiFernandess7/risa/internal/services/stripe"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/labstack/echo/v4"
+)
+
+var allowedProviders = []string{"stripe"}
+
+func (ph PaymentsHandler) CreatePayment(c echo.Context) error {
+	var body CreatePayment
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"error": "invalid body request",
+		})
+	}
+
+	if err := c.Validate(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid fields"})
+	}
+
+	userToken := c.Get("user").(*jwt.Token)
+	claims := userToken.Claims.(jwt.MapClaims)
+	userID := int(claims["user_id"].(float64))
+
+	orderCrud := database.CrudGeneric[Orders]{DB: ph.DB}
+	order := Orders{
+		UserID:       userID,
+		CreditAmount: body.CreditAmount,
+		PriceCents:   body.PriceCents,
+		Status:       "pending",
+	}
+
+	if err := orderCrud.Create(&order); err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "could not create order"})
+	}
+
+	checkoutSession, err := stripe.CreateCheckoutSession(
+		int64(userID),
+		int64(body.CreditAmount),
+		int64(body.PriceCents),
+	)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "payment error"})
+	}
+
+	paymentCrud := database.CrudGeneric[Payments]{DB: ph.DB}
+	payment := Payments{
+		OrderID:           int64(order.ID),
+		Provider:          "stripe",
+		ProviderPaymentID: checkoutSession.ID,
+		Status:            "pending",
+	}
+
+	if err := paymentCrud.Create(&payment); err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "could not create payment record"})
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"message":      "payment initiated",
+		"checkout_url": checkoutSession.URL,
+		"order_id":     order.ID,
+		"payment_id":   payment.ID,
+		"provider_id":  checkoutSession.ID,
+	})
+}
+
+func (ph PaymentsHandler) GetPaymentStatus(c echo.Context) error {
+	orderIDStr := c.Param("order_id")
+
+	orderID, err := strconv.ParseInt(orderIDStr, 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"error": "invalid order_id",
+		})
+	}
+
+	crud := database.CrudGeneric[Orders]{DB: ph.DB}
+	order, err := crud.FindBy("id", orderID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, echo.Map{
+			"error": "order not found",
+		})
+	}
+
+	userToken := c.Get("user").(*jwt.Token)
+	claims := userToken.Claims.(jwt.MapClaims)
+	userID := int64(claims["user_id"].(float64))
+	if int64(order.UserID) != userID {
+		return c.JSON(http.StatusForbidden, echo.Map{
+			"error": "not authorized",
+		})
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"order_status":   order.Status,
+		"payment_status": order.Status,
+		"amount":         order.CreditAmount,
+	})
+}
+
+func (ph PaymentsHandler) GetPaymentHistory(c echo.Context) {}
+
+func (ph PaymentsHandler) WebhookHandler(c echo.Context) {}

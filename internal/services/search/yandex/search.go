@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/GuiFernandess7/risa/internal/services/types"
+	interfaces "github.com/GuiFernandess7/risa/internal/repository/interfaces"
 	"github.com/GuiFernandess7/risa/pkg/utils"
 	g "github.com/serpapi/google-search-results-golang"
 )
@@ -25,7 +25,7 @@ func (ys YandexSearch) Name() string {
 	return "yandex"
 }
 
-func (ys YandexSearch) Search(input types.SearchInput) (any, error) {
+func (ys YandexSearch) Search(input interfaces.SearchInput) (any, error) {
 	hostImageURL := os.Getenv("HOST_IMAGE_URL")
 	hostImageKey := os.Getenv("HOST_IMAGE_KEY")
 	serpAPIKey := os.Getenv("SERPAPI_KEY")
