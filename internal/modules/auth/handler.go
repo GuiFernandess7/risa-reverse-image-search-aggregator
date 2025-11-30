@@ -27,7 +27,7 @@ func (ah AuthHandler) LoginHandler(c echo.Context) error {
 		return c.JSON(400, echo.Map{"error": "invalid credentials"})
 	}
 
-	if !CheckPasswordHash(body.Password, user.Password) {
+	if !CheckPasswordHash(body.Password, user.PasswordHash) {
 		return c.JSON(400, echo.Map{"error": "invalid credentials"})
 	}
 
@@ -45,7 +45,7 @@ func (ah AuthHandler) LoginHandler(c echo.Context) error {
 func (ah AuthHandler) SignupHandler(c echo.Context) error {
 	var body SignupRequest
 	if err := c.Bind(&body); err != nil {
-		return c.JSON(400, echo.Map{"error": "invalid body"})
+		return c.JSON(400, echo.Map{"error": "invalid request body"})
 	}
 
 	if err := c.Validate(&body); err != nil {
@@ -64,11 +64,11 @@ func (ah AuthHandler) SignupHandler(c echo.Context) error {
 	}
 
 	newUser := User{
-		Email:     body.Email,
-		FirstName: body.FirstName,
-		LastName:  body.LastName,
-		Password:  hashedPwd,
-		Status:    "active",
+		Email:          body.Email,
+		FirstName:      body.FirstName,
+		LastName:       body.LastName,
+		PasswordHash: hashedPwd,
+		Status:         "active",
 	}
 
 	if err := crud.Create(&newUser); err != nil {
