@@ -13,7 +13,7 @@ import (
 var allowedProviders = []string{"stripe"}
 
 func (ph PaymentsHandler) CreatePayment(c echo.Context) error {
-	var body CreatePayment
+	var body CreatePaymentRequest
 	if err := c.Bind(&body); err != nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{
 			"error": "invalid body request",
@@ -104,6 +104,30 @@ func (ph PaymentsHandler) GetPaymentStatus(c echo.Context) error {
 	})
 }
 
-func (ph PaymentsHandler) GetPaymentHistory(c echo.Context) {}
+func (ph PaymentsHandler) GetPaymentHistory(c echo.Context) error {
+	userToken := c.Get("user").(*jwt.Token)
+	claims := userToken.Claims.(jwt.MapClaims)
+	userID := int(claims["user_id"].(float64))
+
+	crud := database.CrudGeneric[Orders]{DB: ph.DB}
+	orders, err := crud.Read("user_id", userID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, echo.Map{
+			"error": "error getting history",
+		})
+	}
+
+	history := make([]PaymentHistoryResponse, len(orders))
+	for i, o := range orders {
+		history[i] = PaymentHistoryResponse{
+			ID:           int(o.ID),
+			CreditAmount: o.CreditAmount,
+			PriceCents:   o.PriceCents,
+			Status:       o.Status,
+			CreatedAt:    o.CreatedAt,
+		}
+	}
+	return c.JSON(http.StatusOK, history)
+}
 
 func (ph PaymentsHandler) WebhookHandler(c echo.Context) {}

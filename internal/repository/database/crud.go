@@ -24,14 +24,13 @@ func (c *CrudGeneric[T]) Create(payload *T) error {
 	return c.DB.Create(payload).Error
 }
 
-func (c *CrudGeneric[T]) Read(id any) (*T, error) {
-	var model T
+func (c *CrudGeneric[T]) Read(field string, value any) ([]T, error) {
+	var models []T
 
-	if err := c.DB.First(&model, id).Error; err != nil {
-		fmt.Println("Error reading object from database: ", err)
+	if err := c.DB.Where(fmt.Sprintf("%s = ?", field), value).Find(&models).Error; err != nil {
 		return nil, err
 	}
-	return &model, nil
+	return models, nil
 }
 
 func (c *CrudGeneric[T]) ReadAll() ([]T, error) {
