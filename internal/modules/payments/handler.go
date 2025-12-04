@@ -1,7 +1,9 @@
 package payments
 
 import (
+	"io"
 	"net/http"
+	"os"
 	"strconv"
 
 	database "github.com/GuiFernandess7/risa/internal/repository/database"
@@ -130,4 +132,19 @@ func (ph PaymentsHandler) GetPaymentHistory(c echo.Context) error {
 	return c.JSON(http.StatusOK, history)
 }
 
-func (ph PaymentsHandler) WebhookHandler(c echo.Context) {}
+func (ph PaymentsHandler) WebhookHandler(c echo.Context) error {
+	body, err := io.ReadAll(c.Request().Body)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "cannot read body"})
+	}
+	signature := c.Request().Header.Get("Stripe-Signature")
+
+	event, err := stripe.GetPaymentEvent(body, signature, os.Getenv("STRIPE_WEBHOOK_SECRET"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid signature",
+		})
+	}
+	// HANDLE EVENT HERE
+	return nil
+}
