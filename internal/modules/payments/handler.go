@@ -1,6 +1,7 @@
 package payments
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -133,18 +134,32 @@ func (ph PaymentsHandler) GetPaymentHistory(c echo.Context) error {
 }
 
 func (ph PaymentsHandler) WebhookHandler(c echo.Context) error {
-	body, err := io.ReadAll(c.Request().Body)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "cannot read body"})
-	}
-	signature := c.Request().Header.Get("Stripe-Signature")
+	const MaxBodyBytes = int64(65536)
+	req := c.Request()
+	res := c.Response()
 
-	event, err := stripe.GetPaymentEvent(body, signature, os.Getenv("STRIPE_WEBHOOK_SECRET"))
+	req.Body = http.MaxBytesReader(res, req.Body, MaxBodyBytes)
+
+	payload, err := io.ReadAll(req.Body)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading request body: %v\n", err)
+		return c.NoContent(http.StatusServiceUnavailable)
+	}
+
+	signature := req.Header.Get("Stripe-Signature")
+
+	event, err := stripe.GetPaymentEvent(payload, signature, os.Getenv("STRIPE_WEBHOOK_SECRET"))
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "invalid signature",
 		})
 	}
-	// HANDLE EVENT HERE
-	return nil
+
+	_, err = stripe.DispatchStripeEvent(event)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Webhook error: %v\n", err)
+		return c.NoContent(http.StatusBadRequest)
+	}
+
+	return c.NoContent(http.StatusOK)
 }

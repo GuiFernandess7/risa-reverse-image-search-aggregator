@@ -8,7 +8,7 @@ import (
 	"github.com/stripe/stripe-go/v83/checkout/session"
 )
 
-func GetPaymentStatus(pID string) (*stripe.CheckoutSession, error) {
+func GetPaymentSession(pID string) (*stripe.CheckoutSession, error) {
 	stripe.Key = os.Getenv("STRIPE_API_KEY")
 	sess, err := session.Get(pID, nil)
 	if err != nil {
