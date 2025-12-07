@@ -12,7 +12,6 @@ type Orders struct {
 	CreditAmount      int    `gorm:"not null"`
 	PriceCents        int    `gorm:"not null"`
 	Status            string `gorm:"not null"`
-	PaymentProviderID string `gorm:"not null"`
 	CreatedAt         time.Time
 }
 

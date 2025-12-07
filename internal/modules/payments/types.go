@@ -11,8 +11,8 @@ type PaymentsHandler struct {
 }
 
 type CreatePaymentRequest struct {
-	CreditAmount int    `json:"credit_amount" validate:"required,min=1"`
-	Provider     string `json:"provider" validate:"required,oneof=stripe"`
+    CreditAmount int    `json:"credit_amount" validate:"required,min=1"`
+    Provider     string `json:"provider" validate:"required,oneof=stripe"`
 }
 
 type PaymentHistoryResponse struct {
