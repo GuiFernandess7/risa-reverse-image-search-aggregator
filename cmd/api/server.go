@@ -24,6 +24,9 @@ func main() {
 	}
 
 	port := os.Getenv("API_PORT")
+	if port == "" {
+		port = "8080"
+	}
 
 	db, err := sqlconnect.ConnectDB()
 	if err != nil {
@@ -37,7 +40,7 @@ func main() {
 
 	router.InitRoutes(db, e)
 	srv := &http.Server{
-		Addr:         port,
+		Addr:         ":" + port,
 		Handler:      e,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
