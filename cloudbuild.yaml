@@ -1,0 +1,33 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/risa/risa-api:$SHORT_SHA",
+        ".",
+      ]
+
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/risa/risa-api:$SHORT_SHA",
+      ]
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      [
+        "run",
+        "deploy",
+        "risa-api",
+        "--image",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/risa/risa-api:$SHORT_SHA",
+        "--region=us-central1",
+        "--platform=managed",
+        "--allow-unauthenticated",
+      ]
+
+images:
+  - "us-central1-docker.pkg.dev/$PROJECT_ID/risa/risa-api:$SHORT_SHA"
