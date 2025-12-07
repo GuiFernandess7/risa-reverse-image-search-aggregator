@@ -15,7 +15,7 @@ import (
 
 var allowedProviders = []string{"stripe"}
 
-const PRICE_CENTS = 6.0
+const PricePerCreditCents = 200
 
 func (ph PaymentsHandler) CreatePayment(c echo.Context) error {
 	var body CreatePaymentRequest
@@ -37,7 +37,7 @@ func (ph PaymentsHandler) CreatePayment(c echo.Context) error {
 	order := Orders{
 		UserID:       userID,
 		CreditAmount: body.CreditAmount,
-		PriceCents:   PRICE_CENTS,
+		PriceCents:   PricePerCreditCents,
 		Status:       "pending",
 	}
 
@@ -48,7 +48,7 @@ func (ph PaymentsHandler) CreatePayment(c echo.Context) error {
 	checkoutSession, err := stripe.CreateCheckoutSession(
 		int64(userID),
 		int64(body.CreditAmount),
-		int64(PRICE_CENTS),
+		int64(PricePerCreditCents),
 	)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "payment error"})
