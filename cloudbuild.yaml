@@ -29,8 +29,5 @@ steps:
         "--allow-unauthenticated",
       ]
 
-images:
-  - "us-central1-docker.pkg.dev/$PROJECT_ID/risa/risa-api:$SHORT_SHA"
-
 options:
   logging: CLOUD_LOGGING_ONLY
