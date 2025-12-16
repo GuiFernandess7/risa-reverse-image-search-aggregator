@@ -13,9 +13,11 @@ import (
 func InitRoutes(db *gorm.DB, e *echo.Echo) {
 	authHandlers := &auth.AuthHandler{DB: db}
 	paymentHandlers := &payments.PaymentsHandler{DB: db}
+
 	e.POST("/signup", authHandlers.SignupHandler)
 	e.POST("/login", authHandlers.LoginHandler)
 	e.POST("/refresh", authHandlers.RefreshHandler)
+
 	e.POST("/v1/payments/webhook/:provider", paymentHandlers.WebhookHandler)
 
 	fileHandlers := &filetools.ImageHandler{DB: db}
