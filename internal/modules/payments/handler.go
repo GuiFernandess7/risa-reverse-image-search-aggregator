@@ -152,6 +152,7 @@ func (ph PaymentsHandler) WebhookHandler(c echo.Context) error {
 
 	event, err := stripe.GetPaymentEvent(payload, signature, os.Getenv("STRIPE_WEBHOOK_SECRET"))
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR getting signature: %v\n", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "invalid signature",
 		})
