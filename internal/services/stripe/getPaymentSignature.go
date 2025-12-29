@@ -8,7 +8,14 @@ import (
 )
 
 func GetPaymentEvent(body []byte, signature string, stripeSecret string) (*stripe.Event, error) {
-	event, err := webhook.ConstructEvent(body, signature, stripeSecret)
+	event, err := webhook.ConstructEventWithOptions(
+		body,
+		signature,
+		stripeSecret,
+		webhook.ConstructEventOptions{
+			IgnoreAPIVersionMismatch: true,
+		},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("invalid webhook signature: %w", err)
 	}
