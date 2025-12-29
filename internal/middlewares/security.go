@@ -28,9 +28,15 @@ func RateLimiterSkipper(c echo.Context) bool {
 	return shouldSkipPath(c.Request().URL.Path)
 }
 
+func GzipSkipper(c echo.Context) bool {
+	return shouldSkipPath(c.Request().URL.Path)
+}
+
 func ApplySecurityMiddlewares(e *echo.Echo) *echo.Echo {
 	e.Use(middleware.Recover())
-	e.Use(middleware.Gzip())
+	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+		Skipper: GzipSkipper,
+	}))
 	e.Use(middleware.CORS())
 	e.Use(middleware.Secure())
 
