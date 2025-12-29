@@ -149,6 +149,7 @@ func (ph PaymentsHandler) WebhookHandler(c echo.Context) error {
 	}
 
 	signature := req.Header.Get("Stripe-Signature")
+	fmt.Println("Stripe-Signature:", signature)
 
 	event, err := stripe.GetPaymentEvent(payload, signature, os.Getenv("STRIPE_WEBHOOK_SECRET"))
 	if err != nil {
