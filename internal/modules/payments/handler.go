@@ -11,6 +11,7 @@ import (
 	stripe "github.com/GuiFernandess7/risa/internal/services/stripe"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
+	"gorm.io/datatypes"
 )
 
 var allowedProviders = []string{"stripe"}
@@ -166,4 +167,71 @@ func (ph PaymentsHandler) WebhookHandler(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusOK)
+}
+
+func (ph PaymentsHandler) handleCheckoutSessionCompleted(
+	providerPaymentID string,
+	rawResponse []byte,
+) error {
+
+	tx := ph.DB.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	paymentCrud := database.CrudGeneric[Payments]{DB: tx}
+	orderCrud := database.CrudGeneric[Orders]{DB: tx}
+	creditCrud := database.CrudGeneric[CreditTransactions]{DB: tx}
+
+	payment, err := paymentCrud.FindBy("provider_payment_id", providerPaymentID)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("payment not found")
+	}
+
+	if payment.Status != "pending" {
+		tx.Rollback()
+		return nil
+	}
+
+	payment.Status = "confirmed"
+	payment.RawResponse = datatypes.JSON(rawResponse)
+
+	if err := paymentCrud.Update(payment.ID, payment); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	order, err := orderCrud.FindBy("id", payment.OrderID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	order.Status = "paid"
+	if err := orderCrud.Update(order.ID, order); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	creditTx := CreditTransactions{
+		UserID:      uint(order.UserID),
+		Amount:      order.CreditAmount,
+		Type:        "purchase",
+		ReferenceID: uint(payment.ID),
+		Description: "Purchase confirmed by Stripe",
+	}
+
+	if err := creditCrud.Create(&creditTx); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }
