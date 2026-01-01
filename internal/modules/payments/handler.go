@@ -160,10 +160,35 @@ func (ph PaymentsHandler) WebhookHandler(c echo.Context) error {
 		})
 	}
 
-	_, err = stripe.DispatchStripeEvent(event)
+	paymentStatus, err := stripe.DispatchStripeEvent(event)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Webhook error: %v\n", err)
 		return c.NoContent(http.StatusBadRequest)
+	}
+
+	if err != nil {
+		return c.NoContent(http.StatusBadRequest)
+	}
+
+	if !paymentStatus.Success {
+		fmt.Fprintf(os.Stderr, "Dispatch stripe error: %v\n", paymentStatus.Data)
+		return c.NoContent(http.StatusOK)
+	}
+
+	if paymentStatus.Type == "checkout.session.completed" {
+		if paymentStatus.ProviderPaymentID == "" {
+			return c.NoContent(http.StatusBadRequest)
+		}
+
+		err := ph.handleCheckoutSessionCompleted(
+			paymentStatus.ProviderPaymentID,
+			payload,
+		)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"error": "error handling checkout session",
+			})
+		}
 	}
 
 	return c.NoContent(http.StatusOK)

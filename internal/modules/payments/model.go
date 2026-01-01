@@ -27,7 +27,7 @@ type Payments struct {
 
 type CreditTransactions struct {
 	UserID      uint   `gorm:"primaryKey"`
-	Amount      int   `gorm:"not null"`
+	Amount      int    `gorm:"not null"`
 	Type        string `gorm:"not null"`
 	ReferenceID uint   `gorm:"not null"`
 	Description string `gorm:"not null"`

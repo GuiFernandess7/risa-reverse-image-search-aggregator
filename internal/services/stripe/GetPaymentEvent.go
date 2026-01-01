@@ -9,8 +9,10 @@ import (
 )
 
 type PaymentStatus struct {
-	Success bool
-	Data    any
+	Success           bool
+	Type              string
+	ProviderPaymentID string
+	Data              any
 }
 
 func DispatchStripeEvent(event *stripe.Event) (PaymentStatus, error) {
@@ -25,6 +27,7 @@ func DispatchStripeEvent(event *stripe.Event) (PaymentStatus, error) {
 
 		return PaymentStatus{
 			Success: true,
+			Type:    "payment_intent.succeeded",
 			Data:    paymentIntent,
 		}, nil
 
@@ -37,7 +40,22 @@ func DispatchStripeEvent(event *stripe.Event) (PaymentStatus, error) {
 
 		return PaymentStatus{
 			Success: true,
+			Type:    "payment_method.attached",
 			Data:    paymentMethod,
+		}, nil
+
+	case "checkout.session.completed":
+		var cs stripe.CheckoutSession
+		if err := json.Unmarshal(event.Data.Raw, &cs); err != nil {
+			return PaymentStatus{Success: false},
+				fmt.Errorf("failed to parse checkout.session.completed: %w", err)
+		}
+
+		return PaymentStatus{
+			Success:           true,
+			Type:              "checkout.session.completed",
+			ProviderPaymentID: cs.ID,
+			Data:              cs,
 		}, nil
 
 	default:
