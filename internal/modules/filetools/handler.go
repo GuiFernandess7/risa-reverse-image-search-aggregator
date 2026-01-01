@@ -2,6 +2,7 @@ package filetools
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -19,6 +20,7 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 	log.Println("[STARTING] - Verifying available credits...")
 
 	user, err := auth.GetAuthUser(c)
+	fmt.Printf("[STARTING] - Authentication: %v", user.ID)
 	err = auth.VerifyUserCredits(imgH.DB, user.ID, SEARCH_COST)
 	if err != nil {
 		switch err {
