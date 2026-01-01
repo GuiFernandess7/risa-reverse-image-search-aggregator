@@ -37,6 +37,10 @@ type CreditTransactions struct {
 type CreditBalance struct {
 	UserID     uint `gorm:"primaryKey"`
 	Balance    uint `gorm:"not null"`
-	UploadedAt time.Time
+	UpdatedAt time.Time
 	User       auth.User
+}
+
+func (CreditBalance) TableName() string {
+	return "credit_balance"
 }
