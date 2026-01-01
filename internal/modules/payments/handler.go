@@ -3,7 +3,6 @@ package payments
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -138,20 +137,20 @@ func (ph PaymentsHandler) GetPaymentHistory(c echo.Context) error {
 }
 
 func (ph PaymentsHandler) WebhookHandler(c echo.Context) error {
-	log.Println("[WEBHOOK] - Handler: Processing request...")
+	fmt.Println("[WEBHOOK] - Handler: Processing request...")
 	const MaxBodyBytes = int64(65536)
 	req := c.Request()
 	res := c.Response()
 
 	req.Body = http.MaxBytesReader(res, req.Body, MaxBodyBytes)
 	payload, err := io.ReadAll(req.Body)
-	log.Println("[WEBHOOK] - Handler: Reading body information...")
+	fmt.Println("[WEBHOOK] - Handler: Reading body information...")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading request body: %v\n", err)
 		return c.NoContent(http.StatusServiceUnavailable)
 	}
 
-	log.Println("[WEBHOOK] - Handler: Getting Signature...")
+	fmt.Println("[WEBHOOK] - Handler: Getting Signature...")
 	signature := req.Header.Get("Stripe-Signature")
 	event, err := stripe.GetPaymentEvent(payload, signature, os.Getenv("STRIPE_WEBHOOK_SECRET"))
 	if err != nil {
@@ -161,7 +160,7 @@ func (ph PaymentsHandler) WebhookHandler(c echo.Context) error {
 		})
 	}
 
-	log.Println("[WEBHOOK] - Handler: Dispatching event...")
+	fmt.Println("[WEBHOOK] - Handler: Dispatching event...")
 	paymentStatus, err := stripe.DispatchStripeEvent(event)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Webhook error: %v\n", err)
@@ -177,14 +176,14 @@ func (ph PaymentsHandler) WebhookHandler(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	}
 
-	log.Printf("[WEBHOOK] - Handler: Payment status: %v", paymentStatus)
+	fmt.Printf("[WEBHOOK] - Handler: Payment status: %v", paymentStatus)
 	if paymentStatus.Type == "checkout.session.completed" {
 		if paymentStatus.ProviderPaymentID == "" {
-			log.Println("[WEBHOOK] - Handler: Provider Payment ID not found.")
+			fmt.Println("[WEBHOOK] - Handler: Provider Payment ID not found.")
 			return c.NoContent(http.StatusBadRequest)
 		}
 
-		log.Println("[WEBHOOK] - Checkout completed successfull!")
+		fmt.Println("[WEBHOOK] - Checkout completed successfull!")
 		err := ph.handleCheckoutSessionCompleted(
 			paymentStatus.ProviderPaymentID,
 			payload,
@@ -196,7 +195,7 @@ func (ph PaymentsHandler) WebhookHandler(c echo.Context) error {
 		}
 	}
 
-	log.Println("[WEBHOOK] - Handler finished.")
+	fmt.Println("[WEBHOOK] - Handler finished.")
 	return c.NoContent(http.StatusOK)
 }
 
