@@ -35,10 +35,10 @@ type CreditTransactions struct {
 }
 
 type CreditBalance struct {
-	UserID     uint `gorm:"primaryKey"`
-	Balance    uint `gorm:"not null"`
+	UserID    uint `gorm:"primaryKey"`
+	Balance   uint `gorm:"not null"`
 	UpdatedAt time.Time
-	User       auth.User
+	User      auth.User
 }
 
 func (CreditBalance) TableName() string {
