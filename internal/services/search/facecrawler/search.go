@@ -70,7 +70,6 @@ func (fc FaceCrawler) Start(input interfaces.SearchInput) (any, error) {
 }
 
 func (fc FaceCrawler) Check(jobID string) (any, error) {
-	// Checks the search status
 	site := os.Getenv("SITE_URL")
 	apiKey := os.Getenv("FACECRAWLER_KEY")
 

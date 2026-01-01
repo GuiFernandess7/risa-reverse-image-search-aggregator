@@ -22,7 +22,10 @@ func InitRoutes(db *gorm.DB, e *echo.Echo) {
 
 	fileHandlers := &filetools.ImageHandler{DB: db}
 	v1 := e.Group("/v1")
-	v1.Use(middlewares.AuthMiddleware())
+	v1.Use(
+		middlewares.AuthMiddleware(),
+		middlewares.LoadUserMiddleware(db),
+	)
 	v1.POST("/payments/create", paymentHandlers.CreatePayment)
 	v1.GET("/payments/:order_id/status", paymentHandlers.GetPaymentStatus)
 	v1.GET("/payments/history", paymentHandlers.GetPaymentHistory)

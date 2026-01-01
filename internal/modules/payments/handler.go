@@ -167,10 +167,6 @@ func (ph PaymentsHandler) WebhookHandler(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	if err != nil {
-		return c.NoContent(http.StatusBadRequest)
-	}
-
 	if !paymentStatus.Success {
 		fmt.Fprintf(os.Stderr, "[WEBHOOK] - Handler: Dispatch stripe error: %v\n", paymentStatus.Data)
 		return c.NoContent(http.StatusOK)

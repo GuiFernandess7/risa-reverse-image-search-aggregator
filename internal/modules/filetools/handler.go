@@ -7,17 +7,35 @@ import (
 	"net/http"
 
 	interfaces "github.com/GuiFernandess7/risa/internal/repository/interfaces"
+	auth "github.com/GuiFernandess7/risa/internal/services/auth"
 	engine "github.com/GuiFernandess7/risa/internal/services/engine"
 	utils "github.com/GuiFernandess7/risa/pkg/utils"
 	"github.com/labstack/echo/v4"
 )
 
+const SEARCH_COST = 1
+
 func (imgH ImageHandler) UploadImage(c echo.Context) error {
+	log.Println("[STARTING] - Verifying available credits...")
+
+	user, err := auth.GetAuthUser(c)
+	err = auth.VerifyUserCredits(imgH.DB, user.ID, SEARCH_COST)
+	if err != nil {
+		switch err {
+		case auth.ErrInsufficientCredits:
+			return echo.NewHTTPError(http.StatusPaymentRequired, "insufficient credits")
+		case auth.ErrCreditBalanceNotFound:
+			return echo.NewHTTPError(http.StatusForbidden, "credit account not initialized")
+		default:
+			return echo.ErrInternalServerError
+		}
+	}
+
 	log.Println("[STARTING] - Calling route /image/upload...")
 	srcFile, err := utils.GetFileObject(c, "file")
 	defer srcFile.Close()
 
-	log.Println("[STARTING] - Reading file...")
+	log.Println("[RUNNING] - Reading file...")
 	buf := &bytes.Buffer{}
 	_, err = io.Copy(buf, srcFile)
 	if err != nil {
@@ -33,7 +51,7 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 	}
 
 	if asyncService != nil {
-		log.Println("[STARTING] - Starting async search service...")
+		log.Println("[RUNNING] - Starting async search service...")
 		jobID, err := asyncService.Start(interfaces.SearchInput{
 			ImageBytes: buf.Bytes(),
 		})
@@ -49,7 +67,7 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 		})
 	}
 
-	log.Println("[STARTING] - Starting search service...")
+	log.Println("[RUNNING] - Starting search service...")
 	result, err := searchService.Search(interfaces.SearchInput{
 		ImageBytes: buf.Bytes(),
 	})

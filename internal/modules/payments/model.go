@@ -3,6 +3,7 @@ package payments
 import (
 	"time"
 
+	auth "github.com/GuiFernandess7/risa/internal/modules/auth"
 	"gorm.io/datatypes"
 )
 
@@ -31,4 +32,11 @@ type CreditTransactions struct {
 	Type        string `gorm:"not null"`
 	ReferenceID uint   `gorm:"not null"`
 	Description string `gorm:"not null"`
+}
+
+type CreditBalance struct {
+	UserID     uint `gorm:"primaryKey"`
+	Balance    uint `gorm:"not null"`
+	UploadedAt time.Time
+	User       auth.User
 }
