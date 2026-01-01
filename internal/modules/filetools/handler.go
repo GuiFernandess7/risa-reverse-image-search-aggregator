@@ -67,6 +67,7 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 }
 
 func (imgH ImageHandler) CheckStatusAsync(c echo.Context) error {
+	log.Println("[STARTING] - Calling route /image/check/status...")
 	allowedParams := []string{"engine", "job_id"}
 	if err := utils.ValidateRequestParams(c, allowedParams); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{
@@ -78,12 +79,14 @@ func (imgH ImageHandler) CheckStatusAsync(c echo.Context) error {
 	jobID := c.QueryParam("job_id")
 	_, asyncService, err := engine.GetEngine(engineName)
 	if err != nil {
+		log.Printf("[ERROR] - %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]any{
 			"message": "invalid engine",
 		})
 	}
 
 	if asyncService == nil {
+		log.Printf("[ERROR] - this engine does not support async status")
 		return c.JSON(http.StatusBadRequest, map[string]any{
 			"message": "this engine does not support async status",
 		})
