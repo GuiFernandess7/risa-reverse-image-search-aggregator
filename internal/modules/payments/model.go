@@ -41,6 +41,15 @@ type CreditBalance struct {
 	User      auth.User
 }
 
+type UsageLogs struct {
+	ID          uint   `gorm:"primaryKey"`
+	UserID      uint   `gorm:"not null"`
+	Route       string `gorm:"not null"`
+	CreditsUsed int    `gorm:"not null"`
+	Metadata    datatypes.JSON
+	CreatedAt   time.Time
+}
+
 func (CreditBalance) TableName() string {
 	return "credit_balance"
 }

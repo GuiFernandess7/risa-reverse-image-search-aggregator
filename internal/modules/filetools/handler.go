@@ -2,11 +2,14 @@ package filetools
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 
+	payments "github.com/GuiFernandess7/risa/internal/modules/payments"
+	database "github.com/GuiFernandess7/risa/internal/repository/database"
 	interfaces "github.com/GuiFernandess7/risa/internal/repository/interfaces"
 	auth "github.com/GuiFernandess7/risa/internal/services/auth"
 	engine "github.com/GuiFernandess7/risa/internal/services/engine"
@@ -20,7 +23,7 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 	log.Println("[STARTING] - Verifying available credits...")
 
 	user, err := auth.GetAuthUser(c)
-	fmt.Printf("[STARTING] - Authentication: %v", user.ID)
+	log.Printf("[STARTING] - Authentication: %v", user.ID)
 	err = auth.VerifyUserCredits(imgH.DB, user.ID, SEARCH_COST)
 	if err != nil {
 		switch err {
@@ -29,6 +32,7 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 		case auth.ErrCreditBalanceNotFound:
 			return echo.NewHTTPError(http.StatusForbidden, "credit account not initialized")
 		default:
+			log.Printf("[ERROR] - Unexpected error: %v", err)
 			return echo.ErrInternalServerError
 		}
 	}
@@ -41,14 +45,54 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 	buf := &bytes.Buffer{}
 	_, err = io.Copy(buf, srcFile)
 	if err != nil {
+		log.Printf("[ERROR] - Unexpected error: %v", err)
 		return c.String(http.StatusInternalServerError, "Error reading file")
 	}
 
 	engineName := c.FormValue("engine")
 	searchService, asyncService, err := engine.GetEngine(engineName)
 	if err != nil {
+		log.Printf("[ERROR] - Unexpected error: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]any{
 			"message": err.Error(),
+		})
+	}
+
+	metadata, _ := json.Marshal(map[string]any{
+		"ip":     c.RealIP(),
+		"engine": engineName,
+		"route":  "/image/upload",
+	})
+
+	log.Println("[RUNNING] - Debiting credits...")
+	crudLog := database.CrudGeneric[payments.UsageLogs]{DB: imgH.DB}
+	usageLog := payments.UsageLogs{
+		UserID:      user.ID,
+		Route:       "/image/upload",
+		CreditsUsed: 1,
+		Metadata:    metadata,
+	}
+	err = crudLog.Create(&usageLog)
+	if err != nil {
+		log.Printf("[ERROR] - Unexpected error: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]any{
+			"message": "Unexpected error occured.",
+		})
+	}
+
+	crudCredits := database.CrudGeneric[payments.CreditTransactions]{DB: imgH.DB}
+	newDebit := payments.CreditTransactions{
+		UserID:      user.ID,
+		Amount:      -1,
+		Type:        "usage",
+		ReferenceID: usageLog.ID,
+		Description: fmt.Sprintf("image search via %s", engineName)
+	}
+	err = crudCredits.Create(&newDebit)
+	if err != nil {
+		log.Printf("[ERROR] - Unexpected error: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]any{
+			"message": "Unexpected error occured.",
 		})
 	}
 
@@ -75,11 +119,13 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 	})
 
 	if err != nil {
+		log.Printf("[ERROR] - Unexpected error: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]any{
 			"message": err.Error(),
 		})
 	}
 
+	log.Println("[FINISHED] - Search executed successfully!")
 	return c.JSON(http.StatusOK, map[string]any{
 		"engine": searchService.Name(),
 		"result": result,
