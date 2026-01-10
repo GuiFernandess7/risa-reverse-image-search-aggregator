@@ -86,7 +86,7 @@ func (imgH ImageHandler) UploadImage(c echo.Context) error {
 		Amount:      -1,
 		Type:        "usage",
 		ReferenceID: usageLog.ID,
-		Description: fmt.Sprintf("image search via %s", engineName)
+		Description: fmt.Sprintf("image search via %s", engineName),
 	}
 	err = crudCredits.Create(&newDebit)
 	if err != nil {
