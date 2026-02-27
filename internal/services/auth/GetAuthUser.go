@@ -1,4 +1,4 @@
-package auth 
+package auth
 
 import (
 	auth "github.com/GuiFernandess7/risa/internal/modules/auth"

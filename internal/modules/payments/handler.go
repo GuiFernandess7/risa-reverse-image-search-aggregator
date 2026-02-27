@@ -8,8 +8,8 @@ import (
 	"strconv"
 
 	database "github.com/GuiFernandess7/risa/internal/repository/database"
-	auth "github.com/GuiFernandess7/risa/internal/services/auth"
 	stripe "github.com/GuiFernandess7/risa/internal/services/stripe"
+	auth "github.com/GuiFernandess7/risa/internal/services/auth"
 	"github.com/labstack/echo/v4"
 	"gorm.io/datatypes"
 )
