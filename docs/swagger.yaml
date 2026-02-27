@@ -1,0 +1,580 @@
+openapi: 3.0.3
+info:
+  title: RISA - Reverse Image Search Aggregator API
+  description: |
+    API para busca reversa de imagens com suporte a múltiplas engines (Yandex, FaceCrawler).
+    Inclui autenticação JWT, sistema de créditos e integração de pagamentos via Stripe.
+  version: 1.0.0
+  contact:
+    name: RISA API Support
+
+servers:
+  - url: http://localhost:8080/api
+    description: Servidor local
+
+tags:
+  - name: Auth
+    description: Autenticação e gerenciamento de conta
+  - name: Credits
+    description: Consulta de créditos do usuário
+  - name: Payments
+    description: Pagamentos e compra de créditos
+  - name: Image Search
+    description: Upload de imagem e busca reversa
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT obtido via /api/login
+
+  schemas:
+    SignupRequest:
+      type: object
+      required:
+        - email
+        - first_name
+        - last_name
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: usuario@exemplo.com
+        first_name:
+          type: string
+          example: João
+        last_name:
+          type: string
+          example: Silva
+        password:
+          type: string
+          example: minha_senha_segura
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: usuario@exemplo.com
+        password:
+          type: string
+          example: minha_senha_segura
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIs...
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIs...
+        refresh_token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIs...
+
+    SignupResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Account created successfully
+        user_id:
+          type: integer
+          example: 1
+
+    CreditBalanceResponse:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          example: 1
+        balance:
+          type: integer
+          example: 10
+
+    CreatePaymentRequest:
+      type: object
+      required:
+        - credit_amount
+        - provider
+      properties:
+        credit_amount:
+          type: integer
+          minimum: 1
+          example: 5
+        provider:
+          type: string
+          enum:
+            - stripe
+          example: stripe
+
+    CreatePaymentResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: payment initiated
+        checkout_url:
+          type: string
+          example: https://checkout.stripe.com/pay/cs_test_...
+        order_id:
+          type: integer
+          example: 1
+        payment_id:
+          type: integer
+          example: 1
+        provider_id:
+          type: string
+          example: cs_test_abc123
+
+    PaymentStatusResponse:
+      type: object
+      properties:
+        order_status:
+          type: string
+          example: paid
+        payment_status:
+          type: string
+          example: paid
+        amount:
+          type: integer
+          example: 5
+
+    PaymentHistoryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        credit_amount:
+          type: integer
+          example: 5
+        price_cents:
+          type: integer
+          example: 200
+        status:
+          type: string
+          example: paid
+        created_at:
+          type: string
+          format: date-time
+
+    ImageUploadSyncResponse:
+      type: object
+      properties:
+        engine:
+          type: string
+          example: yandex
+        result:
+          type: object
+          description: Resultado da busca reversa (varia por engine)
+
+    ImageUploadAsyncResponse:
+      type: object
+      properties:
+        engine:
+          type: string
+          example: facecrawler
+        job_id:
+          type: string
+          example: abc-123-def
+
+    ImageStatusResponse:
+      type: object
+      properties:
+        engine:
+          type: string
+          example: facecrawler
+        result:
+          type: object
+          description: Resultado ou status parcial da busca assíncrona
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: invalid credentials
+
+    MessageErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: error description
+
+paths:
+  /signup:
+    post:
+      tags:
+        - Auth
+      summary: Criar conta
+      description: Registra um novo usuário no sistema.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '201':
+          description: Conta criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignupResponse'
+        '400':
+          description: Dados inválidos ou e-mail já existente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_body:
+                  value:
+                    error: invalid request body
+                invalid_fields:
+                  value:
+                    error: invalid fields
+                email_exists:
+                  value:
+                    error: email already exists
+
+  /login:
+    post:
+      tags:
+        - Auth
+      summary: Login
+      description: Autentica o usuário e retorna tokens JWT (access + refresh).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login bem-sucedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_credentials:
+                  value:
+                    error: invalid credentials
+
+  /refresh:
+    post:
+      tags:
+        - Auth
+      summary: Renovar tokens
+      description: Gera um novo par de access/refresh tokens a partir de um refresh token válido.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Tokens renovados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Refresh token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_token:
+                  value:
+                    error: invalid refresh token
+                wrong_type:
+                  value:
+                    error: not a refresh token
+
+  /v1/credits:
+    get:
+      tags:
+        - Credits
+      summary: Consultar saldo de créditos
+      description: Retorna o saldo de créditos disponíveis do usuário autenticado.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Saldo retornado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditBalanceResponse'
+        '404':
+          description: Saldo não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_found:
+                  value:
+                    error: credit balance not found
+
+  /v1/payments/create:
+    post:
+      tags:
+        - Payments
+      summary: Iniciar pagamento
+      description: Cria uma ordem de compra de créditos e retorna a URL de checkout do Stripe.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        '200':
+          description: Pagamento iniciado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatePaymentResponse'
+        '400':
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/payments/{order_id}/status:
+    get:
+      tags:
+        - Payments
+      summary: Status do pagamento
+      description: Retorna o status de uma ordem de pagamento específica.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID da ordem de pagamento
+      responses:
+        '200':
+          description: Status retornado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentStatusResponse'
+        '400':
+          description: order_id inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ordem não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/payments/history:
+    get:
+      tags:
+        - Payments
+      summary: Histórico de pagamentos
+      description: Retorna a lista de ordens de pagamento do usuário autenticado.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Histórico retornado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentHistoryItem'
+        '404':
+          description: Erro ao buscar histórico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/payments/webhook/{provider}:
+    post:
+      tags:
+        - Payments
+      summary: Webhook de pagamento
+      description: |
+        Endpoint chamado pelo provedor de pagamento (Stripe) para notificar
+        eventos como conclusão de checkout. Não requer autenticação JWT;
+        validação feita via assinatura do Stripe.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - stripe
+          description: Nome do provedor de pagamento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Payload do evento Stripe (raw body)
+      responses:
+        '200':
+          description: Evento processado
+        '400':
+          description: Assinatura inválida ou erro no processamento
+
+  /v1/image/upload:
+    post:
+      tags:
+        - Image Search
+      summary: Upload de imagem para busca reversa
+      description: |
+        Envia uma imagem e seleciona a engine de busca reversa.
+        Consome 1 crédito do saldo do usuário.
+        
+        - **yandex**: busca síncrona — resultado retornado na mesma resposta.
+        - **facecrawler**: busca assíncrona — retorna um `job_id` para consulta posterior via `/v1/image/status`.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - engine
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Arquivo de imagem
+                engine:
+                  type: string
+                  enum:
+                    - yandex
+                    - facecrawler
+                  description: Engine de busca reversa
+      responses:
+        '200':
+          description: Busca realizada (síncrona) ou job iniciado (assíncrona)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ImageUploadSyncResponse'
+                  - $ref: '#/components/schemas/ImageUploadAsyncResponse'
+        '400':
+          description: Engine inválida ou erro na busca
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageErrorResponse'
+        '402':
+          description: Créditos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageErrorResponse'
+              examples:
+                insufficient:
+                  value:
+                    message: insufficient credits
+        '403':
+          description: Conta de créditos não inicializada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageErrorResponse'
+              examples:
+                not_initialized:
+                  value:
+                    message: credit account not initialized
+
+  /v1/image/status:
+    get:
+      tags:
+        - Image Search
+      summary: Status da busca assíncrona
+      description: Consulta o resultado de uma busca assíncrona previamente iniciada via upload.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: engine
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - facecrawler
+          description: Engine utilizada na busca
+        - name: job_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: ID do job retornado no upload
+      responses:
+        '200':
+          description: Status/resultado da busca
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageStatusResponse'
+        '400':
+          description: Parâmetros inválidos ou engine não suporta async
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageErrorResponse'
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageErrorResponse'

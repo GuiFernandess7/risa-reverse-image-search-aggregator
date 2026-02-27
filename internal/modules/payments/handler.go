@@ -14,8 +14,6 @@ import (
 	"gorm.io/datatypes"
 )
 
-var allowedProviders = []string{"stripe"}
-
 const PricePerCreditCents = 200
 
 func (ph PaymentsHandler) GetCredits(c echo.Context) error {

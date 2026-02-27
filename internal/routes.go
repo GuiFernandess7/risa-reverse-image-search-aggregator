@@ -1,6 +1,7 @@
 package internal
 
 import (
+	docs "github.com/GuiFernandess7/risa/docs"
 	middlewares "github.com/GuiFernandess7/risa/internal/middlewares"
 	auth "github.com/GuiFernandess7/risa/internal/modules/auth"
 	filetools "github.com/GuiFernandess7/risa/internal/modules/filetools"
@@ -15,6 +16,8 @@ func InitRoutes(db *gorm.DB, e *echo.Echo) {
 	paymentHandlers := &payments.PaymentsHandler{DB: db}
 
 	api := e.Group("/api")
+	docs.RegisterDocsRoutes(api)
+
 	api.POST("/signup", authHandlers.SignupHandler)
 	api.POST("/login", authHandlers.LoginHandler)
 	api.POST("/refresh", authHandlers.RefreshHandler)
