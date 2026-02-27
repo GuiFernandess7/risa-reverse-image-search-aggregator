@@ -8,8 +8,8 @@ import (
 	"strconv"
 
 	database "github.com/GuiFernandess7/risa/internal/repository/database"
+	auth "github.com/GuiFernandess7/risa/internal/services/auth"
 	stripe "github.com/GuiFernandess7/risa/internal/services/stripe"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"gorm.io/datatypes"
 )
@@ -17,9 +17,11 @@ import (
 const PricePerCreditCents = 200
 
 func (ph PaymentsHandler) GetCredits(c echo.Context) error {
-	userToken := c.Get("user").(*jwt.Token)
-	claims := userToken.Claims.(jwt.MapClaims)
-	userID := uint(claims["user_id"].(float64))
+	user, err := auth.GetAuthUser(c)
+	if err != nil {
+		return echo.ErrUnauthorized
+	}
+	userID := user.ID
 
 	crud := database.CrudGeneric[CreditBalance]{DB: ph.DB}
 	balance, err := crud.FindBy("user_id", userID)
@@ -47,9 +49,11 @@ func (ph PaymentsHandler) CreatePayment(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid fields"})
 	}
 
-	userToken := c.Get("user").(*jwt.Token)
-	claims := userToken.Claims.(jwt.MapClaims)
-	userID := int(claims["user_id"].(float64))
+	user, err := auth.GetAuthUser(c)
+	if err != nil {
+		return echo.ErrUnauthorized
+	}
+	userID := int(user.ID)
 
 	orderCrud := database.CrudGeneric[Orders]{DB: ph.DB}
 	order := Orders{
@@ -111,10 +115,11 @@ func (ph PaymentsHandler) GetPaymentStatus(c echo.Context) error {
 		})
 	}
 
-	userToken := c.Get("user").(*jwt.Token)
-	claims := userToken.Claims.(jwt.MapClaims)
-	userID := int64(claims["user_id"].(float64))
-	if int64(order.UserID) != userID {
+	user, err := auth.GetAuthUser(c)
+	if err != nil {
+		return echo.ErrUnauthorized
+	}
+	if int64(order.UserID) != int64(user.ID) {
 		return c.JSON(http.StatusForbidden, echo.Map{
 			"error": "not authorized",
 		})
@@ -128,9 +133,11 @@ func (ph PaymentsHandler) GetPaymentStatus(c echo.Context) error {
 }
 
 func (ph PaymentsHandler) GetPaymentHistory(c echo.Context) error {
-	userToken := c.Get("user").(*jwt.Token)
-	claims := userToken.Claims.(jwt.MapClaims)
-	userID := int(claims["user_id"].(float64))
+	user, err := auth.GetAuthUser(c)
+	if err != nil {
+		return echo.ErrUnauthorized
+	}
+	userID := int(user.ID)
 
 	crud := database.CrudGeneric[Orders]{DB: ph.DB}
 	orders, err := crud.Read("user_id", userID)

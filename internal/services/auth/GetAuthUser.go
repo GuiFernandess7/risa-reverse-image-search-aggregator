@@ -6,7 +6,7 @@ import (
 )
 
 func GetAuthUser(c echo.Context) (*auth.User, error) {
-	user, ok := c.Get("user").(*auth.User)
+	user, ok := c.Get("auth_user").(*auth.User)
 	if !ok {
 		return nil, echo.ErrUnauthorized
 	}

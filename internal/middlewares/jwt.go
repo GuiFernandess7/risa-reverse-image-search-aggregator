@@ -42,7 +42,7 @@ func LoadUserMiddleware(db *gorm.DB) echo.MiddlewareFunc {
 				return echo.ErrUnauthorized
 			}
 
-			c.Set("user", &user)
+			c.Set("auth_user", &user)
 			return next(c)
 		}
 	}
