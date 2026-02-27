@@ -26,8 +26,8 @@ func CreateCheckoutSession(userID int64, creditAmount int64, priceCents int64) (
 				},
 			},
 		},
-		SuccessURL: stripe.String("https://mockfront.com/success?session_id={CHECKOUT_SESSION_ID}"),
-		CancelURL:  stripe.String("https://mockfront.com/cancel?session_id={CHECKOUT_SESSION_ID}"),
+		SuccessURL: stripe.String("http://localhost:3000/payment/success"),
+		CancelURL:  stripe.String("https://checkout.stripe.com/cancel"),
 		Metadata: map[string]string{
 			"user_id":       fmt.Sprint(userID),
 			"credit_amount": fmt.Sprint(creditAmount),
