@@ -26,7 +26,7 @@ func CreateCheckoutSession(userID int64, creditAmount int64, priceCents int64) (
 				},
 			},
 		},
-		SuccessURL: stripe.String("http://localhost:3000/payment/success"),
+		SuccessURL: stripe.String("https://checkout.stripe.com/success"),
 		CancelURL:  stripe.String("https://checkout.stripe.com/cancel"),
 		Metadata: map[string]string{
 			"user_id":       fmt.Sprint(userID),
