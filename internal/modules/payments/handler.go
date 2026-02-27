@@ -18,6 +18,25 @@ var allowedProviders = []string{"stripe"}
 
 const PricePerCreditCents = 200
 
+func (ph PaymentsHandler) GetCredits(c echo.Context) error {
+	userToken := c.Get("user").(*jwt.Token)
+	claims := userToken.Claims.(jwt.MapClaims)
+	userID := uint(claims["user_id"].(float64))
+
+	crud := database.CrudGeneric[CreditBalance]{DB: ph.DB}
+	balance, err := crud.FindBy("user_id", userID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, echo.Map{
+			"error": "credit balance not found",
+		})
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"user_id": userID,
+		"balance": balance.Balance,
+	})
+}
+
 func (ph PaymentsHandler) CreatePayment(c echo.Context) error {
 	var body CreatePaymentRequest
 	if err := c.Bind(&body); err != nil {

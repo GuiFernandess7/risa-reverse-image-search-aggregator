@@ -27,6 +27,7 @@ func InitRoutes(db *gorm.DB, e *echo.Echo) {
 		middlewares.AuthMiddleware(),
 		middlewares.LoadUserMiddleware(db),
 	)
+	v1.GET("credits", paymentHandlers.GetCredits)
 	v1.POST("payments/create", paymentHandlers.CreatePayment)
 	v1.GET("payments/:order_id/status", paymentHandlers.GetPaymentStatus)
 	v1.GET("payments/history", paymentHandlers.GetPaymentHistory)
