@@ -14,21 +14,22 @@ func InitRoutes(db *gorm.DB, e *echo.Echo) {
 	authHandlers := &auth.AuthHandler{DB: db}
 	paymentHandlers := &payments.PaymentsHandler{DB: db}
 
-	e.POST("api/signup", authHandlers.SignupHandler)
-	e.POST("api//login", authHandlers.LoginHandler)
-	e.POST("api/refresh", authHandlers.RefreshHandler)
+	api := e.Group("/api")
+	api.POST("/signup", authHandlers.SignupHandler)
+	api.POST("/login", authHandlers.LoginHandler)
+	api.POST("/refresh", authHandlers.RefreshHandler)
 
-	e.POST("api/v1/payments/webhook/:provider", paymentHandlers.WebhookHandler)
+	api.POST("/v1/payments/webhook/:provider", paymentHandlers.WebhookHandler)
 
 	fileHandlers := &filetools.ImageHandler{DB: db}
-	v1 := e.Group("/v1")
+	v1 := api.Group("/v1")
 	v1.Use(
 		middlewares.AuthMiddleware(),
 		middlewares.LoadUserMiddleware(db),
 	)
-	v1.POST("api/payments/create", paymentHandlers.CreatePayment)
-	v1.GET("api/payments/:order_id/status", paymentHandlers.GetPaymentStatus)
-	v1.GET("api/payments/history", paymentHandlers.GetPaymentHistory)
-	v1.POST("api/image/upload", fileHandlers.UploadImage)
-	v1.GET("api/image/status", fileHandlers.CheckStatusAsync)
+	v1.POST("payments/create", paymentHandlers.CreatePayment)
+	v1.GET("payments/:order_id/status", paymentHandlers.GetPaymentStatus)
+	v1.GET("payments/history", paymentHandlers.GetPaymentHistory)
+	v1.POST("image/upload", fileHandlers.UploadImage)
+	v1.GET("image/status", fileHandlers.CheckStatusAsync)
 }
